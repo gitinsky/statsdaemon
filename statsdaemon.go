@@ -258,10 +258,10 @@ func processTimers(buffer *bytes.Buffer, now int64, pctls Percentiles) int64 {
 				var tmpl string
 				var pctstr string
 				if pct.float >= 0 {
-					tmpl = "%s.%s.upper_%s %d %d\n"
+					tmpl = "%s.timers.%s.upper_%s %d %d\n"
 					pctstr = pct.str
 				} else {
-					tmpl = "%s.%s.lower_%s %d %d\n"
+					tmpl = "%s.timers.%s.lower_%s %d %d\n"
 					pctstr = pct.str[1:]
 				}
 				fmt.Fprintf(buffer, tmpl, *prefix, u, pctstr, maxAtThreshold, now)
@@ -270,10 +270,10 @@ func processTimers(buffer *bytes.Buffer, now int64, pctls Percentiles) int64 {
 			var z Uint64Slice
 			timers[u] = z
 
-			fmt.Fprintf(buffer, "%s.%s.mean %f %d\n", *prefix, u, mean, now)
-			fmt.Fprintf(buffer, "%s.%s.upper %d %d\n", *prefix, u, max, now)
-			fmt.Fprintf(buffer, "%s.%s.lower %d %d\n", *prefix, u, min, now)
-			fmt.Fprintf(buffer, "%s.%s.count %d %d\n", *prefix, u, count, now)
+			fmt.Fprintf(buffer, "%s.timers.%s.mean %f %d\n", *prefix, u, mean, now)
+			fmt.Fprintf(buffer, "%s.timers.%s.upper %d %d\n", *prefix, u, max, now)
+			fmt.Fprintf(buffer, "%s.timers.%s.lower %d %d\n", *prefix, u, min, now)
+			fmt.Fprintf(buffer, "%s.timers.%s.count %d %d\n", *prefix, u, count, now)
 		}
 	}
 	return num
