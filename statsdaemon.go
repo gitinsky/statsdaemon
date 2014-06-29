@@ -69,6 +69,7 @@ var (
 	showVersion      = flag.Bool("version", false, "print version string")
 	persistCountKeys = flag.Int64("persist-count-keys", 60, "number of flush-interval's to persist count keys")
 	receiveCounter  = flag.String("receive-counter", "", "Metric name for total metrics recevied per interval")
+	prefix           = flag.String("prefix", "stats", "Prefix of reported metrics")
 	percentThreshold = Percentiles{}
 )
 
@@ -181,6 +182,7 @@ func submit(deadline time.Time) error {
 
 func processCounters(buffer *bytes.Buffer, now int64) int64 {
 	var num int64
+	var realc float64
 	// continue sending zeros for counters for a short period of time even if we have no new data
 	// note we use the same in-memory value to denote both the actual value of the counter (value >= 0)
 	// as well as how many turns to keep the counter for (value < 0)
@@ -193,10 +195,11 @@ func processCounters(buffer *bytes.Buffer, now int64) int64 {
 			continue
 		case c < 0:
 			counters[s] -= 1
-			fmt.Fprintf(buffer, "%s %d %d\n", s, 0, now)
+			fmt.Fprintf(buffer, "%s.%s %d %d\n", *prefix, s, 0, now)
 		case c >= 0:
 			counters[s] = -1
-			fmt.Fprintf(buffer, "%s %d %d\n", s, c, now)
+			realc = float64(c)/10.0
+			fmt.Fprintf(buffer, "%s.%s %.6f %d\n", *prefix, s, realc, now)
 		}
 		num++
 	}
@@ -209,7 +212,7 @@ func processGauges(buffer *bytes.Buffer, now int64) int64 {
 		if c == math.MaxUint64 {
 			continue
 		}
-		fmt.Fprintf(buffer, "%s %d %d\n", g, c, now)
+		fmt.Fprintf(buffer, "%s.%s %d %d\n", *prefix, g, c, now)
 		gauges[g] = math.MaxUint64
 		num++
 	}
@@ -255,22 +258,22 @@ func processTimers(buffer *bytes.Buffer, now int64, pctls Percentiles) int64 {
 				var tmpl string
 				var pctstr string
 				if pct.float >= 0 {
-					tmpl = "%s.upper_%s %d %d\n"
+					tmpl = "%s.%s.upper_%s %d %d\n"
 					pctstr = pct.str
 				} else {
-					tmpl = "%s.lower_%s %d %d\n"
+					tmpl = "%s.%s.lower_%s %d %d\n"
 					pctstr = pct.str[1:]
 				}
-				fmt.Fprintf(buffer, tmpl, u, pctstr, maxAtThreshold, now)
+				fmt.Fprintf(buffer, tmpl, *prefix, u, pctstr, maxAtThreshold, now)
 			}
 
 			var z Uint64Slice
 			timers[u] = z
 
-			fmt.Fprintf(buffer, "%s.mean %f %d\n", u, mean, now)
-			fmt.Fprintf(buffer, "%s.upper %d %d\n", u, max, now)
-			fmt.Fprintf(buffer, "%s.lower %d %d\n", u, min, now)
-			fmt.Fprintf(buffer, "%s.count %d %d\n", u, count, now)
+			fmt.Fprintf(buffer, "%s.%s.mean %f %d\n", *prefix, u, mean, now)
+			fmt.Fprintf(buffer, "%s.%s.upper %d %d\n", *prefix, u, max, now)
+			fmt.Fprintf(buffer, "%s.%s.lower %d %d\n", *prefix, u, min, now)
+			fmt.Fprintf(buffer, "%s.%s.count %d %d\n", *prefix, u, count, now)
 		}
 	}
 	return num
