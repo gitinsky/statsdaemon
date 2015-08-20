@@ -17,6 +17,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"github.com/mapmyfitness/go-opentsdb/tsdb"
 )
 
 const (
@@ -133,9 +134,19 @@ func monitor() {
 func submit(deadline time.Time) error {
 	var buffer bytes.Buffer
 	var num int64
-
 	now := time.Now().Unix()
-	if *graphiteAddress!="-"{
+	num += processCounters(&buffer, now)
+	num += processGauges(&buffer, now)
+	num += processTimers(&buffer, now, percentThreshold)
+	fmt.Printf("buffer: "+buffer.String()+"\n")
+	fmt.Printf("num: "+string(num)+"\n")
+	fmt.Printf("deadline: ")
+	fmt.Printf("%v", deadline)
+	fmt.Printf("\n")
+	fmt.Printf("now: ")
+	fmt.Printf("%v",now)
+	fmt.Printf("\n")
+	if *graphiteAddress!="-" {
 		client, err := net.Dial("tcp", *graphiteAddress)
 		if err != nil {
 			if *debug {
@@ -155,9 +166,6 @@ func submit(deadline time.Time) error {
 			return errors.New(errmsg)
 		}
 	
-		num += processCounters(&buffer, now)
-		num += processGauges(&buffer, now)
-		num += processTimers(&buffer, now, percentThreshold)
 		if num == 0 {
 			return nil
 		}
@@ -178,6 +186,26 @@ func submit(deadline time.Time) error {
 		}
 
 		log.Printf("sent %d stats to %s", num, *graphiteAddress)
+
+	}
+	if(*openTSDBAddress!=""){
+		datapoints:=[]tsdb.DataPoint{}//for testing
+		datapoint:=tsdb.DataPoint{}
+		TSDB:=tsdb.TSDB{}
+		server:=tsdb.Server{}
+		datapoint.Metric.Set("woohoo")
+		fmt.Printf("%v",datapoint.Metric)
+		datapoint.Value.Set(0.1)
+		datapoint.Tags.Set("a","B")
+		//datapoint.Timestamp
+		server.Host="188.40.45.201"
+		server.Port=uint(4242)
+		datapoints=append(datapoints,datapoint)
+		response,err:=TSDB.Put(datapoints)
+		fmt.Printf("error, response")
+		fmt.Printf("%v",err)
+		fmt.Printf("%v",response)
+		
 	}
 	return nil
 }
