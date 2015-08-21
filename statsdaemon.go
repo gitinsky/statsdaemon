@@ -72,7 +72,7 @@ var (
 	receiveCounter  = flag.String("receive-counter", "", "Metric name for total metrics recevied per interval")
 	prefix           = flag.String("prefix", "stats", "Prefix of reported metrics")
 	percentThreshold = Percentiles{}
-	openTSDBAddress  = flag.String("opentsdb", "127.0.0.1:2003", "openTSDB service address (or - to disable)")
+	openTSDBAddress  = flag.String("opentsdb", "-", "openTSDB service address")
 
 )
 
@@ -138,14 +138,6 @@ func submit(deadline time.Time) error {
 	num += processCounters(&buffer, now)
 	num += processGauges(&buffer, now)
 	num += processTimers(&buffer, now, percentThreshold)
-	fmt.Printf("buffer: "+buffer.String()+"\n")
-	fmt.Printf("num: "+string(num)+"\n")
-	fmt.Printf("deadline: ")
-	fmt.Printf("%v", deadline)
-	fmt.Printf("\n")
-	fmt.Printf("now: ")
-	fmt.Printf("%v",now)
-	fmt.Printf("\n")
 	if *graphiteAddress!="-" {
 		client, err := net.Dial("tcp", *graphiteAddress)
 		if err != nil {
@@ -188,23 +180,88 @@ func submit(deadline time.Time) error {
 		log.Printf("sent %d stats to %s", num, *graphiteAddress)
 
 	}
-	if(*openTSDBAddress!=""){
-		datapoints:=[]tsdb.DataPoint{}//for testing
-		datapoint:=tsdb.DataPoint{}
+	if(*openTSDBAddress!="-"){
+		datapoints:=[]tsdb.DataPoint{}
 		TSDB:=tsdb.TSDB{}
 		server:=tsdb.Server{}
-		datapoint.Metric.Set("woohoo")
-		fmt.Printf("%v",datapoint.Metric)
-		datapoint.Value.Set(0.1)
-		datapoint.Tags.Set("a","B")
-		//datapoint.Timestamp
-		server.Host="188.40.45.201"
-		server.Port=uint(4242)
-		datapoints=append(datapoints,datapoint)
-		response,err:=TSDB.Put(datapoints)
-		fmt.Printf("error, response")
-		fmt.Printf("%v",err)
-		fmt.Printf("%v",response)
+		serverAdress:=strings.Split(*openTSDBAddress,":")
+		if(len(serverAdress)!=2){
+			errmsg := fmt.Sprintf("Error: Incorrect openTSDB server address")
+			return errors.New(errmsg)
+		}
+		port,err:=strconv.ParseUint(serverAdress[1],10,32)
+		if(err!=nil){
+			return err
+		}
+		server.Host=serverAdress[0]
+		server.Port=uint(port)
+		metrics := strings.Split(buffer.String(),"\n")
+		for _,mtr := range metrics {
+			data:= strings.Split(mtr," ")
+			if len(data)==3 {
+				metric:=tsdb.Metric{}
+				value:=tsdb.Value{}
+				tags:=tsdb.Tags{}
+				timestamp:=tsdb.Time{}
+				datapoint:=tsdb.DataPoint{}
+				val,err := strconv.ParseFloat(data[1],64)
+				if err!=nil {
+					return err
+				}
+				value.Set(val)
+				err=timestamp.Parse(data[2])
+				if err!=nil {
+					return err
+				}
+				metricAndTags:=strings.Split(data[0],"?")
+				if(metricAndTags[0]!=data[0]){
+					err=metric.Set(metricAndTags[0])
+					if err!=nil {
+						return err
+					}
+					for _, tagVal := range strings.Split(metricAndTags[1],"&"){
+						arrTagVal:= strings.Split(tagVal,"=")
+						if(len(arrTagVal)!=2){
+							errmsg := fmt.Sprintf("Error: Incorrect metric format")
+							return errors.New(errmsg)
+						}
+						tags.Set(arrTagVal[0],arrTagVal[1])
+					}
+				} else {
+					metricAndTags:=strings.Split(data[0],"._t_")
+					if(len(metricAndTags)!=2){
+						errmsg := fmt.Sprintf("Error: Incorrect metric format")
+						return errors.New(errmsg)
+					}
+					err=metric.Set(metricAndTags[0])
+					if err!=nil {
+						return err
+					}
+					arrTagVal:= strings.Split (metricAndTags[1],".")
+					if(len(arrTagVal)!=2){
+						errmsg := fmt.Sprintf("Error: Incorrect metric format")
+						return errors.New(errmsg)
+					}
+					tags.Set(arrTagVal[0],arrTagVal[1])
+				}
+
+				datapoint.Value=&value
+				datapoint.Metric=&metric
+				datapoint.Tags=&tags
+				datapoint.Timestamp=&timestamp
+				datapoints=append(datapoints,datapoint)	
+
+			}
+
+			
+		}
+		
+		TSDB.Servers=append(TSDB.Servers,server)
+		_,err=TSDB.Put(datapoints)
+		if err!=nil {
+			return err
+		}
+		log.Printf("sent %d stats to %s", num, *openTSDBAddress)
 		
 	}
 	return nil
