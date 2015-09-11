@@ -222,16 +222,14 @@ func submit(deadline time.Time) error {
 					for _, tagVal := range strings.Split(metricAndTags[1],"&"){
 						arrTagVal:= strings.Split(tagVal,"=")
 						if(len(arrTagVal)!=2){
-							errmsg := fmt.Sprintf("Error: Incorrect metric format")
-							return errors.New(errmsg)
+                            return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "tagVal", tagVal)
 						}
 						tags.Set(arrTagVal[0],arrTagVal[1])
 					}
 				} else {
 					metricAndTags:=strings.Split(data[0],"._t_")
 					if(len(metricAndTags)!=2){
-						errmsg := fmt.Sprintf("Error: Incorrect metric format")
-						return errors.New(errmsg)
+                        return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "data[0]", data[0])
 					}
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
@@ -239,8 +237,7 @@ func submit(deadline time.Time) error {
 					}
 					arrTagVal:= strings.Split (metricAndTags[1],".")
 					if(len(arrTagVal)!=2){
-						errmsg := fmt.Sprintf("Error: Incorrect metric format")
-						return errors.New(errmsg)
+                        return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "metricAndTags[1]", metricAndTags[1])
 					}
 					tags.Set(arrTagVal[0],arrTagVal[1])
 				}
