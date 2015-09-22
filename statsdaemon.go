@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 	"github.com/mapmyfitness/go-opentsdb/tsdb"
+	"runtime"
 )
 
 const (
@@ -49,7 +50,7 @@ type Percentile struct {
 func (a *Percentiles) Set(s string) error {
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return fmt.Errorf("%v: '%v'", err, s)
+		return fmt.Errorf("%d %v: '%#v'", getCaller(), err, s)
 	}
 	*a = append(*a, &Percentile{f, strings.Replace(s, ".", "_", -1)})
 	return nil
@@ -94,12 +95,12 @@ func monitor() {
 		case sig := <-signalchan:
 			fmt.Printf("!! Caught signal %d... shutting down\n", sig)
 			if err := submit(time.Now().Add(period)); err != nil {
-				log.Printf("NEW ERROR: %s", err)
+				log.Printf("ERROR: %s", err)
 			}
 			return
 		case <-ticker.C:
 			if err := submit(time.Now().Add(period)); err != nil {
-				log.Printf("NEW ERROR: %s", err)
+				log.Printf("ERROR: %s", err)
 			}
 		case s := <-In:
 			if (*receiveCounter != "") {
@@ -186,7 +187,7 @@ func submit(deadline time.Time) error {
 		}
 		port,err:=strconv.ParseUint(serverAdress[1],10,32)
 		if(err!=nil){
-			return fmt.Errorf("%v: '%v'", err, serverAdress[1])
+			return fmt.Errorf("%d %v: '%#v'", getCaller(), err, serverAdress[1])
 		}
 		server.Host=serverAdress[0]
 		server.Port=uint(port)
@@ -201,18 +202,18 @@ func submit(deadline time.Time) error {
 				datapoint:=tsdb.DataPoint{}
 				val,err := strconv.ParseFloat(data[1],64)
 				if err!=nil {
-					return fmt.Errorf("%v: '%v'", err, data[1])
+					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, data[1])
 				}
 				value.Set(val)
 				err=timestamp.Parse(data[2])
 				if err!=nil {
-					return fmt.Errorf("%v: '%v'", err, data[2])
+					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, data[2])
 				}
 				metricAndTags:=strings.Split(data[0],"?")
 				if(metricAndTags[0]!=data[0]){
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-					return fmt.Errorf("%v: '%v'", err, metricAndTags[0])
+					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, metricAndTags[0])
 					}
 					for _, tagVal := range strings.Split(metricAndTags[1],"&"){
 						arrTagVal:= strings.Split(tagVal,"=")
@@ -228,7 +229,7 @@ func submit(deadline time.Time) error {
 					}
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-						return fmt.Errorf("%v : '%v'", err, metricAndTags[0])
+						return fmt.Errorf("%v : '%#v'", err, metricAndTags[0])
 					}
 					arrTagVal:= strings.Split (metricAndTags[1],".")
 					if(len(arrTagVal)!=2){
@@ -251,7 +252,7 @@ func submit(deadline time.Time) error {
 		TSDB.Servers=append(TSDB.Servers,server)
 		_,err=TSDB.Put(datapoints)
 		if err!=nil {
-			return fmt.Errorf("%v: '%v'", err, datapoints)
+			return fmt.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
 		}
 		log.Printf("sent %d stats to %s", num, *openTSDBAddress)
 		
@@ -443,3 +444,9 @@ func main() {
 	go udpListener()
 	monitor()
 }
+
+func getCaller() int {
+	_, _, line, _ := runtime.Caller(1)
+	return line
+}
+
