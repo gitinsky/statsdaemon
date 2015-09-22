@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 	"github.com/mapmyfitness/go-opentsdb/tsdb"
-	"runtime"
 )
 
 const (
