@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 	"github.com/mapmyfitness/go-opentsdb/tsdb"
+	"github.com/davecgh/go-spew"
 )
 
 const (
@@ -49,7 +50,7 @@ type Percentile struct {
 func (a *Percentiles) Set(s string) error {
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return fmt.Errorf("%d %v: '%#v'", getCaller(), err, s)
+		return spew.Errorf("%d %v: '%#v'", getCaller(), err, s)
 	}
 	*a = append(*a, &Percentile{f, strings.Replace(s, ".", "_", -1)})
 	return nil
@@ -146,13 +147,13 @@ func submit(deadline time.Time) error {
 				processGauges(&buffer, now)
 				processTimers(&buffer, now, percentThreshold)
 			}
-			return fmt.Errorf("dialing %s failed - %s", *graphiteAddress, err)
+			return spew.Errorf("dialing %s failed - %s", *graphiteAddress, err)
 		}
 		defer client.Close()
 	
 		err = client.SetDeadline(deadline)
 		if err != nil {
-			return fmt.Errorf("could not set deadline: %v", err)
+			return spew.Errorf("could not set deadline: %v", err)
 		}
 	
 		if num == 0 {
@@ -170,7 +171,7 @@ func submit(deadline time.Time) error {
 
 		_, err = client.Write(buffer.Bytes())
 		if err != nil {
-			return fmt.Errorf("failed to write stats - %s", err)
+			return spew.Errorf("failed to write stats - %s", err)
 		}
 
 		log.Printf("sent %d stats to %s", num, *graphiteAddress)
@@ -182,11 +183,11 @@ func submit(deadline time.Time) error {
 		server:=tsdb.Server{}
 		serverAdress:=strings.Split(*openTSDBAddress,":")
 		if(len(serverAdress)!=2){
-			return fmt.Errorf("Error: Incorrect openTSDB server address")
+			return spew.Errorf("Error: Incorrect openTSDB server address")
 		}
 		port,err:=strconv.ParseUint(serverAdress[1],10,32)
 		if(err!=nil){
-			return fmt.Errorf("%d %v: '%#v'", getCaller(), err, serverAdress[1])
+			return spew.Errorf("%d %v: '%#v'", getCaller(), err, serverAdress[1])
 		}
 		server.Host=serverAdress[0]
 		server.Port=uint(port)
@@ -201,38 +202,38 @@ func submit(deadline time.Time) error {
 				datapoint:=tsdb.DataPoint{}
 				val,err := strconv.ParseFloat(data[1],64)
 				if err!=nil {
-					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, data[1])
+					return spew.Errorf("%d %v: '%#v'", getCaller(), err, data[1])
 				}
 				value.Set(val)
 				err=timestamp.Parse(data[2])
 				if err!=nil {
-					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, data[2])
+					return spew.Errorf("%d %v: '%#v'", getCaller(), err, data[2])
 				}
 				metricAndTags:=strings.Split(data[0],"?")
 				if(metricAndTags[0]!=data[0]){
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-					return fmt.Errorf("%d %v: '%#v'", getCaller(), err, metricAndTags[0])
+					return spew.Errorf("%d %v: '%#v'", getCaller(), err, metricAndTags[0])
 					}
 					for _, tagVal := range strings.Split(metricAndTags[1],"&"){
 						arrTagVal:= strings.Split(tagVal,"=")
 						if(len(arrTagVal)!=2){
-                            return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "tagVal", tagVal)
+                            return spew.Errorf("Error: Incorrect metric format %s: '%s'", "tagVal", tagVal)
 						}
 						tags.Set(arrTagVal[0],arrTagVal[1])
 					}
 				} else {
 					metricAndTags:=strings.Split(data[0],"._t_")
 					if(len(metricAndTags)!=2){
-                        return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "data[0]", data[0])
+                        return spew.Errorf("Error: Incorrect metric format %s: '%s'", "data[0]", data[0])
 					}
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-						return fmt.Errorf("%v : '%#v'", err, metricAndTags[0])
+						return spew.Errorf("%v : '%#v'", err, metricAndTags[0])
 					}
 					arrTagVal:= strings.Split (metricAndTags[1],".")
 					if(len(arrTagVal)!=2){
-                        return fmt.Errorf("Error: Incorrect metric format %s: '%s'", "metricAndTags[1]", metricAndTags[1])
+                        return spew.Errorf("Error: Incorrect metric format %s: '%s'", "metricAndTags[1]", metricAndTags[1])
 					}
 					tags.Set(arrTagVal[0],arrTagVal[1])
 				}
@@ -251,7 +252,7 @@ func submit(deadline time.Time) error {
 		TSDB.Servers=append(TSDB.Servers,server)
 		_,err=TSDB.Put(datapoints)
 		if err!=nil {
-			return fmt.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
+			return spew.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
 		}
 		log.Printf("sent %d stats to %s", num, *openTSDBAddress)
 		
