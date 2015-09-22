@@ -206,18 +206,18 @@ func submit(deadline time.Time) error {
 				datapoint:=tsdb.DataPoint{}
 				val,err := strconv.ParseFloat(data[1],64)
 				if err!=nil {
-					return err
+					return fmt.Errorf("%v: '%v'", err, data[1])
 				}
 				value.Set(val)
 				err=timestamp.Parse(data[2])
 				if err!=nil {
-					return err
+					return fmt.Errorf("%v: '%v'", err, data[2])
 				}
 				metricAndTags:=strings.Split(data[0],"?")
 				if(metricAndTags[0]!=data[0]){
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-						return err
+					return fmt.Errorf("%v: '%v'", err, metricAndTags[0])
 					}
 					for _, tagVal := range strings.Split(metricAndTags[1],"&"){
 						arrTagVal:= strings.Split(tagVal,"=")
