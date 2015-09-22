@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 	"github.com/mapmyfitness/go-opentsdb/tsdb"
-	"github.com/davecgh/go-spew"
+	"github.com/davecgh/go-spew/spew"
 )
 
 const (
