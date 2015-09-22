@@ -95,12 +95,12 @@ func monitor() {
 		case sig := <-signalchan:
 			fmt.Printf("!! Caught signal %d... shutting down\n", sig)
 			if err := submit(time.Now().Add(period)); err != nil {
-				log.Printf("ERROR: %s", err)
+				log.Printf("NEW ERROR: %s", err)
 			}
 			return
 		case <-ticker.C:
 			if err := submit(time.Now().Add(period)); err != nil {
-				log.Printf("ERROR: %s", err)
+				log.Printf("NEW ERROR: %s", err)
 			}
 		case s := <-In:
 			if (*receiveCounter != "") {
@@ -147,15 +147,13 @@ func submit(deadline time.Time) error {
 				processGauges(&buffer, now)
 				processTimers(&buffer, now, percentThreshold)
 			}
-			errmsg := fmt.Sprintf("dialing %s failed - %s", *graphiteAddress, err)
-			return errors.New(errmsg)
+			return fmt.Errorf("dialing %s failed - %s", *graphiteAddress, err)
 		}
 		defer client.Close()
 	
 		err = client.SetDeadline(deadline)
 		if err != nil {
-			errmsg := fmt.Sprintf("could not set deadline:", err)
-			return errors.New(errmsg)
+			return fmt.Errorf("could not set deadline: %v", err)
 		}
 	
 		if num == 0 {
@@ -173,8 +171,7 @@ func submit(deadline time.Time) error {
 
 		_, err = client.Write(buffer.Bytes())
 		if err != nil {
-			errmsg := fmt.Sprintf("failed to write stats - %s", err)
-			return errors.New(errmsg)
+			return fmt.Errorf("failed to write stats - %s", err)
 		}
 
 		log.Printf("sent %d stats to %s", num, *graphiteAddress)
@@ -186,8 +183,7 @@ func submit(deadline time.Time) error {
 		server:=tsdb.Server{}
 		serverAdress:=strings.Split(*openTSDBAddress,":")
 		if(len(serverAdress)!=2){
-			errmsg := fmt.Sprintf("Error: Incorrect openTSDB server address")
-			return errors.New(errmsg)
+			return fmt.Errorf("Error: Incorrect openTSDB server address")
 		}
 		port,err:=strconv.ParseUint(serverAdress[1],10,32)
 		if(err!=nil){
