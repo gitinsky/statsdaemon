@@ -49,7 +49,7 @@ type Percentile struct {
 func (a *Percentiles) Set(s string) error {
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("%v: '%v'", err, s)
 	}
 	*a = append(*a, &Percentile{f, strings.Replace(s, ".", "_", -1)})
 	return nil
@@ -186,7 +186,7 @@ func submit(deadline time.Time) error {
 		}
 		port,err:=strconv.ParseUint(serverAdress[1],10,32)
 		if(err!=nil){
-			return err
+			return fmt.Errorf("%v: '%v'", err, serverAdress[1])
 		}
 		server.Host=serverAdress[0]
 		server.Port=uint(port)
@@ -228,7 +228,7 @@ func submit(deadline time.Time) error {
 					}
 					err=metric.Set(metricAndTags[0])
 					if err!=nil {
-						return err
+						return fmt.Errorf("%v : '%v'", err, metricAndTags[0])
 					}
 					arrTagVal:= strings.Split (metricAndTags[1],".")
 					if(len(arrTagVal)!=2){
@@ -251,7 +251,7 @@ func submit(deadline time.Time) error {
 		TSDB.Servers=append(TSDB.Servers,server)
 		_,err=TSDB.Put(datapoints)
 		if err!=nil {
-			return err
+			return fmt.Errorf("%v: '%v'", err, datapoints)
 		}
 		log.Printf("sent %d stats to %s", num, *openTSDBAddress)
 		
