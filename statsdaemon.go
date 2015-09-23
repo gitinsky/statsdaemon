@@ -191,7 +191,10 @@ func submit(deadline time.Time) error {
 		}
 		server.Host=serverAdress[0]
 		server.Port=uint(port)
+		TSDB.Servers=append(TSDB.Servers,server)
+
 		metrics := strings.Split(buffer.String(),"\n")
+		
 		for _,mtr := range metrics {
 			data:= strings.Split(mtr," ")
 			if len(data)==3 {
@@ -244,15 +247,23 @@ func submit(deadline time.Time) error {
 				datapoint.Timestamp=&timestamp
 				datapoints=append(datapoints,datapoint)	
 
+				if len(datapoints) > 10 {
+					_, err = TSDB.Put(datapoints)
+					if err!=nil {
+						return spew.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
+					}
+					datapoints = []tsdb.DataPoint{}
+				}
 			}
 
 			
 		}
 		
-		TSDB.Servers=append(TSDB.Servers,server)
-		_,err=TSDB.Put(datapoints)
-		if err!=nil {
-			return spew.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
+		if len(datapoints) > 0 {
+			_,err=TSDB.Put(datapoints)
+			if err!=nil {
+				return spew.Errorf("%d %v: '%#v'", getCaller(), err, datapoints)
+			}
 		}
 		log.Printf("sent %d stats to %s", num, *openTSDBAddress)
 		
